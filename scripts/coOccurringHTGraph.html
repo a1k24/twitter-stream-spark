@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Co Occurring Hashtags</title>
+
+  <style type="text/css">
+    html, body {
+      font: 10pt arial;
+      height: 95%;
+    }
+    #mynetwork {
+      width: 100%;
+      height: 100%;
+      border: 1px solid lightgray;
+    }
+    /* Absolute Center Spinner */
+    .loading {
+      position: fixed;
+      z-index: 999;
+      height: 2em;
+      width: 2em;
+      overflow: show;
+      margin: auto;
+      top: 0;
+      left: 0;
+      bottom: 0;
+      right: 0;
+    }
+
+    /* Transparent Overlay */
+    .loading:before {
+      content: '';
+      display: block;
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.3);
+    }
+
+    /* :not(:required) hides these rules from IE9 and below */
+    .loading:not(:required) {
+      /* hide "loading..." text */
+      font: 0/0 a;
+      color: transparent;
+      text-shadow: none;
+      background-color: transparent;
+      border: 0;
+    }
+
+    .loading:not(:required):after {
+      content: '';
+      display: block;
+      font-size: 10px;
+      width: 1em;
+      height: 1em;
+      margin-top: -0.5em;
+      -webkit-animation: spinner 1500ms infinite linear;
+      -moz-animation: spinner 1500ms infinite linear;
+      -ms-animation: spinner 1500ms infinite linear;
+      -o-animation: spinner 1500ms infinite linear;
+      animation: spinner 1500ms infinite linear;
+      border-radius: 0.5em;
+      -webkit-box-shadow: rgba(0, 0, 0, 0.75) 1.5em 0 0 0, rgba(0, 0, 0, 0.75) 1.1em 1.1em 0 0, rgba(0, 0, 0, 0.75) 0 1.5em 0 0, rgba(0, 0, 0, 0.75) -1.1em 1.1em 0 0, rgba(0, 0, 0, 0.5) -1.5em 0 0 0, rgba(0, 0, 0, 0.5) -1.1em -1.1em 0 0, rgba(0, 0, 0, 0.75) 0 -1.5em 0 0, rgba(0, 0, 0, 0.75) 1.1em -1.1em 0 0;
+      box-shadow: rgba(0, 0, 0, 0.75) 1.5em 0 0 0, rgba(0, 0, 0, 0.75) 1.1em 1.1em 0 0, rgba(0, 0, 0, 0.75) 0 1.5em 0 0, rgba(0, 0, 0, 0.75) -1.1em 1.1em 0 0, rgba(0, 0, 0, 0.75) -1.5em 0 0 0, rgba(0, 0, 0, 0.75) -1.1em -1.1em 0 0, rgba(0, 0, 0, 0.75) 0 -1.5em 0 0, rgba(0, 0, 0, 0.75) 1.1em -1.1em 0 0;
+    }
+
+    /* Animation */
+
+    @-webkit-keyframes spinner {
+      0% {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+    @-moz-keyframes spinner {
+      0% {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+    @-o-keyframes spinner {
+      0% {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+    @keyframes spinner {
+      0% {
+        -webkit-transform: rotate(0deg);
+        -moz-transform: rotate(0deg);
+        -ms-transform: rotate(0deg);
+        -o-transform: rotate(0deg);
+        transform: rotate(0deg);
+      }
+      100% {
+        -webkit-transform: rotate(360deg);
+        -moz-transform: rotate(360deg);
+        -ms-transform: rotate(360deg);
+        -o-transform: rotate(360deg);
+        transform: rotate(360deg);
+      }
+    }
+  </style>
+
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.0/vis.min.js"></script>
+  <script type="text/javascript" src="https://cdnjs.cloudflare.com/ajax/libs/async/1.5.2/async.min.js"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/vis/4.16.0/vis.min.css" rel="stylesheet" type="text/css" />
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.0/jquery.min.js"></script>
+  <script type="text/javascript">
+  // $.ajaxSetup({
+  //   async: false
+  // });
+    var nodes = null;
+    var edges = null;
+    var network = null;
+
+    function getData(url) {
+      var htobj = {};
+      var nodearr = [];
+      var edgearr = [];
+      // var promises = [];
+      var htindex = 0;
+      var edgeindex = 0;
+      var flickerAPI = "http://localhost:3000/" + url;
+      $.getJSON(flickerAPI)
+        .done(function( data ) {
+          //console.log(data);
+          async.forEachOf(data[0].hash_cooc, function(value, key, callback) {
+            var a, b, ht1count, ht2count;
+            if (htobj[value.ht1] === undefined) {
+              htobj[value.ht1] = 2*key;
+              // promises.push($.getJSON("http://localhost:3000/hashtag/" + value.ht1)
+              //   .done(function( htdata) {
+              //     ht1count = htdata[0];
+              //     nodearr.push({id: 2*key, value: ht1count, title: ht1count +'', label: '#' + value.ht1});
+              //   }));
+              ht1count = data[0].hash_dict[value.ht1];
+              nodearr.push({id: 2*key, value: ht1count, title: ht1count +' times', label: '#' + value.ht1});
+
+              a = 2*key;
+            } else {
+              a = htobj[value.ht1];
+            }
+            if (htobj[value.ht2] === undefined) {
+              htobj[value.ht2] = 2*key + 1;
+              // promises.push($.getJSON("http://localhost:3000/hashtag/" + value.ht2)
+              //   .done(function( htdata) {
+              //     ht2count = htdata[0];
+              //     nodearr.push({id: 2*key + 1, "value": ht2count, title: ht2count+'', label: '#' + value.ht2})
+                // }));
+              ht2count = data[0].hash_dict[value.ht2];
+              nodearr.push({id: 2*key + 1, value: ht2count, title: ht2count + ' times', label: '#' + value.ht2});
+              
+              b = 2*key + 1;
+            } else {
+              b = htobj[value.ht2];
+            }
+            edgearr.push({from: a, to: b, "value": value.count, title: value.count + ' co occurrences'});
+            callback();
+          }, function(err) {
+              console.log(err);
+              nodes = nodearr;
+              edges = edgearr;
+              // $.when.apply($, promises).then(draw);
+              draw();    
+          });
+          // var datalen = data.length;
+          // for (let i = 0; i < datalen; i++) {
+          //   let a, b, ht1count, ht2count;
+          //   if (htobj[data[i].ht1] === undefined) {
+          //     htobj[data[i].ht1] = htindex;
+          //     $.getJSON("http://localhost:3000/hashtag/" + data[i].ht1)
+          //       .done(function( htdata) {
+          //         ht1count = htdata[0];
+          //       })
+          //     nodearr.push({id: htindex, value: ht1count, title: ht1count +'', label: data[i].ht1});
+          //     a = htindex;
+          //     htindex++;
+          //   } else {
+          //     a = htobj[data[i].ht1];
+          //   }
+          //   if (htobj[data[i].ht2] === undefined) {
+          //     htobj[data[i].ht2] = htindex;
+          //     $.getJSON("http://localhost:3000/hashtag/" + data[i].ht2)
+          //       .done(function( htdata) {
+          //         ht2count = htdata[0];
+          //       })
+          //     nodearr.push({id: htindex, value: ht2count, title: ht2count+'', label: data[i].ht2})
+          //     b = htindex;
+          //     htindex++;
+          //   } else {
+          //     b = htobj[data[i].ht2];
+          //   }
+          //   edgearr.push({from: a, to: b, value: data[i].count, title: data[i].count + ' occurrences'});
+          // }
+          // console.log(edgearr);
+          
+        })
+      };
+
+    function draw() {
+      // create people.
+      // value corresponds with the age of the person
+      // nodes = [ // Get from HTTPRequest
+      //   {id: 1,  value: 2,  label: 'Algie' },
+      //   {id: 2,  value: 31, label: 'Alston'},
+      //   {id: 3,  value: 12, label: 'Barney'},
+      //   {id: 4,  value: 16, label: 'Coley' },
+      //   {id: 5,  value: 17, label: 'Grant' },
+      //   {id: 6,  value: 15, label: 'Langdon'},
+      //   {id: 7,  value: 6,  label: 'Lee'},
+      //   {id: 8,  value: 5,  label: 'Merlin'},
+      //   {id: 9,  value: 30, label: 'Mick'},
+      //   {id: 10, value: 18, label: 'Tod'},
+      // ];
+
+      // create connections between people
+      // value corresponds with the amount of contact between two people
+      // edges = [  // Get from
+      //   {from: 2, to: 8, value: 3, title: '3 emails per week'},
+      //   {from: 2, to: 9, value: 5, title: '5 emails per week'},
+      //   {from: 2, to: 10,value: 1, title: '1 emails per week'},
+      //   {from: 4, to: 6, value: 100, title: '100 emails per week'},
+      //   {from: 5, to: 7, value: 2, title: '2 emails per week'},
+      //   {from: 4, to: 5, value: 1, title: '1 emails per week'},
+      //   {from: 9, to: 10,value: 2, title: '2 emails per week'},
+      //   {from: 2, to: 3, value: 6, title: '6 emails per week'},
+      //   {from: 3, to: 9, value: 4, title: '4 emails per week'},
+      //   {from: 5, to: 3, value: 1, title: '1 emails per week'},
+      //   {from: 2, to: 7, value: 4, title: '4 emails per week'}
+      // ];
+
+      // Instantiate our network object.
+      var container = document.getElementById('mynetwork');
+      var data = {
+        nodes: nodes,
+        edges: edges
+      };
+      var options = {
+        layout: {
+          improvedLayout: false
+        },
+        nodes: {
+          shape: 'dot',
+          scaling:{
+            label: {
+              min:20,
+              max:50
+            }
+          }
+        }
+      };
+      network = new vis.Network(container, data, options);
+      network.on( 'afterDrawing', function(properties) {
+        $('div.loading').hide();
+      });
+    }
+
+    function getTopOccur() {
+      var endp = "cooccurring/";
+      var num = document.getElementById("top").value;
+      if (num != '') {
+        var url = endp+num;
+        $('div.loading').show();
+        getData(url);
+      }
+    }
+
+    function getGraph() {
+      var endp = "cooccurring_bfs/";
+      var ht = document.getElementById("hashtag").value;
+      if (ht!='') {
+        var depth = document.getElementById("depth").value;
+        var url = endp + ht + '/' + depth;
+        if (depth <= 3 && depth > 0) {
+          $('div.loading').show();
+          getData(url);
+        }
+      }
+    }
+  </script>
+</head>
+<body onload="$('div.loading').hide()">
+  <input id="top" type="number" placeholder="100" required>
+  <button onClick="getTopOccur()">Top Co-occurences</button>
+  <br>
+  <input id="hashtag" type="text" placeholder="TeamIronMan" required>
+  <!-- <input id="depth" type="number" max="3" placeholder="2"> -->
+  <input id="depth" placeholder="1 - 3" type="number">
+  <button onClick="getGraph()">Get Graph</button>
+<p>
+  The size of the dot signifies the count of the Hashtag. Hover over edges to get the number of times they have co occurred together.
+</p>
+<div class="loading"></div>
+<div id="mynetwork"></div>
+</body>
+</html>
