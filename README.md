@@ -1,5 +1,5 @@
 # twitter-stream-spark
-This Project is aimed at making a real-time stream of Twitter public data, which can be used for further social media analysis.  
+This Project is aimed at making an API over the real-time stream of Twitter public data, so that it can be used for further social media analysis easily.  
 
 Visualisations we were able to obtain follow. 
 
